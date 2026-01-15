@@ -22,7 +22,8 @@ const app = express()
         }
 
         res.status(200).json({
-            token,
+            status: 200,
+            message: "Accés Autorisé"
         });
     })
     .post('/invoices', async (req, res, next) => {
@@ -40,7 +41,8 @@ const app = express()
         }
 
         res.status(200).json({
-            token,
+            status: 200,
+            message: "Accés Autorisé"
         });
     })
     .post('/debts', async (req, res, next) => {
@@ -58,7 +60,8 @@ const app = express()
         }
 
         res.status(200).json({
-            token,
+            status: 200,
+            message: "Accés Autorisé"
         });
     });
 
