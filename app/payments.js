@@ -7,53 +7,85 @@ const SECRET = dotenv.config({path: './.env'}).parsed.SECRET;
 const PORT = 5000;
 const HOST = 'localhost';
 
+const authMiddleware = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.sendStatus(401);
+
+    const [type, token] = authHeader.split(' ');
+    if (type !== 'Bearer' || !token) return res.sendStatus(401);
+
+    try {
+        req.payload = jwt.verify(token, SECRET);
+        next();
+    } catch {
+        return res.sendStatus(401);
+    }
+};
+
+const middlewareCheckPermission = (permissions) => (req, res, next) => {
+    const {scope} = req.payload;
+
+    for (const permission of permissions) {
+        if (scope.includes(permission)) {
+            return next();
+        }
+    }
+
+    return res.sendStatus(403);
+};
+
 const app = express()
-    .use((req, res, next) => {
-        const credentials = req.headers.authorization.split(' ');
+    .use(express.urlencoded({extended: true}))
+    .use(authMiddleware)
+    .get(
+        '/payments/:id',
+        middlewareCheckPermission(['payments:r', 'payments:rw']),
+        async (req, res, next) => {
+            const payementID = req.params.id;
+            const payload = req.payload;
+            if (!payload.scope.includes('payments:r')) {
+                return res.sendStatus(401);
+            }
 
-        if (credentials.length !== 2 || credentials[0] !== 'Bearer') {
-            return res.sendStatus(401);
+            const paymentUser = payments.find((payment) => {
+                return payment.userId == payload.id && payment.id == payementID;
+            });
+
+            if (!paymentUser)
+                return res.status(401).json({
+                    status: 401,
+                    message: 'Accés Refusé',
+                });
+
+            return res.status(200).json({
+                status: 200,
+                message: 'Accés Autorisé',
+                paymentUser,
+            });
         }
+    )
+    .post(
+        '/payments',
+        middlewareCheckPermission(['payments:rw']),
+        async (req, res, next) => {
+            const payload = req.payload;
+            if (!payload.scope.includes('payments:rw')) {
+                return res.sendStatus(401);
+            }
 
-        const token = credentials[1];
-        const payload = jwt.verify(token, SECRET);
-
-        req.payload = payload;
-        return next();
-    })
-    .get('/payments/:id', async (req, res, next) => {
-        const payload = req.payload;
-        if (!payload.scope.includes('payments:r')) {
-            return res.sendStatus(401);
+            res.status(200).json({
+                status: 200,
+                message: 'Accés Autorisé',
+            });
         }
-        console.log(payload);
-
-        const payment = payments.find(
-            (payment) => payment.userId == payload.id
-        );
-
-        if (!payment) payment = 'Pas de payement trouvé';
-
-        res.status(200).json({
-            status: 200,
-            message: 'Accés Autorisé',
-            payment,
-        });
-    })
-    .post('/payments', async (req, res, next) => {
-        const payload = req.payload;
-        if (!payload.scope.includes('payments:rw')) {
-            return res.sendStatus(401);
+    )
+    .delete(
+        '/payments/:id',
+        middlewareCheckPermission(['payments:rw']),
+        async (req, res, next) => {
+            // delete payment
         }
-
-        res.status(200).json({
-            status: 200,
-            message: 'Accés Autorisé',
-        });
-    })
-    .delete('/payments/:id', async (req, res, next) => {
-        // delete payment
-    });
+    );
 
 app.listen(PORT, HOST, () => {
     console.log(`Listening at: ${HOST}:${PORT}`);
