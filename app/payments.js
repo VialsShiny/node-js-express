@@ -43,9 +43,6 @@ const app = express()
         async (req, res, next) => {
             const payementID = req.params.id;
             const payload = req.payload;
-            if (!payload.scope.includes('payments:r')) {
-                return res.sendStatus(401);
-            }
 
             const paymentUser = payments.find((payment) => {
                 return payment.userId == payload.id && payment.id == payementID;
@@ -69,9 +66,6 @@ const app = express()
         middlewareCheckPermission(['payments:rw']),
         async (req, res, next) => {
             const payload = req.payload;
-            if (!payload.scope.includes('payments:rw')) {
-                return res.sendStatus(401);
-            }
 
             res.status(200).json({
                 status: 200,
