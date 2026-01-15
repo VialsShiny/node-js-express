@@ -1,6 +1,5 @@
-import argon2 from 'argon2';
 import express from 'express';
-import generateSecureRandomString from './randomString.js';
+import createToken from './sessionToken.js';
 
 const PORT = 3001;
 const HOST = 'localhost';
@@ -37,10 +36,8 @@ const app = express()
             }
         }
 
-        const tokenId = generateSecureRandomString();
-        const tokenEncrypted = await argon2.hash(tokenId);
-        const session = Buffer.from(`${userFound.id}.${tokenId}`).toString(
-            'base64'
+        const {tokenEncrypted, tokenId, session} = await createToken(
+            userFound.id
         );
 
         sessions.push({
@@ -49,11 +46,56 @@ const app = express()
             hash: tokenEncrypted,
         });
 
-        return response.json({
+        return response.status(200).json({
             session: session,
         });
+    })
+    .get('/users/:userid', (request, response, next) => {
+        const {userid} = request.params;
+
+        const tokenSplit = request.headers.authorization.split(' ');
+
+        console.log(tokenSplit);
+
+        if (tokenSplit[0] !== 'Bearer' || tokenSplit.length < 2) {
+            return response.sendStatus(401);
+        }
+
+        const session = Buffer.from(tokenSplit[1], 'base64').toString('utf-8');
+        const sessionSplit = session.split('.');
+
+        console.log(sessionSplit);
+        if (sessionSplit.length !== 2) {
+            return response.sendStatus(401);
+        }
+
+        const sessionUserId = sessionSplit[0];
+        const sessionId = sessionSplit[1];
+
+        const sessionFound = sessions.find(
+            (session) => session.id === sessionId
+        );
+
+        if (
+            !sessionFound ||
+            sessionFound.userId !== Number.parseInt(sessionUserId)
+        ) {
+            return response.sendStatus(401);
+        }
+
+        const userFound = users.find(
+            (user) => user.id === Number.parseInt(userid)
+        );
+
+        if (!userFound) {
+            return response.sendStatus(404);
+        }
+
+        response.status(200).json(userFound);
     });
 
 app.listen(PORT, HOST, () => {
     console.log(`Listening at: ${HOST}:${PORT}`);
 });
+
+// Mi43ZDljYjhpMmF1Y2h5ajV6czh2Z2Yza2c=
