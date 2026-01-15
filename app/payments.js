@@ -17,7 +17,7 @@ const app = express()
         const token = credentials[1];
         const payload = jwt.verify(token, SECRET);
 
-        if (!payload.scope.includes('payments:r')) {
+        if (!payload.scope.includes('payments:rw')) {
             return res.sendStatus(401);
         }
 
@@ -26,6 +26,37 @@ const app = express()
         });
     })
     .post('/invoices', async (req, res, next) => {
+        const credentials = req.headers.authorization.split(' ');
+
+        if (credentials.length !== 2 || credentials[0] !== 'Bearer') {
+            return res.sendStatus(401);
+        }
+
+        const token = credentials[1];
+        const payload = jwt.verify(token, SECRET);
+
+        if (!payload.scope.includes('payments:r')) {
+            return res.sendStatus(401);
+        }
+
+        res.status(200).json({
+            token,
+        });
+    })
+    .post('/debts', async (req, res, next) => {
+        const credentials = req.headers.authorization.split(' ');
+
+        if (credentials.length !== 2 || credentials[0] !== 'Bearer') {
+            return res.sendStatus(401);
+        }
+
+        const token = credentials[1];
+        const payload = jwt.verify(token, SECRET);
+
+        if (!payload.scope.includes('payments:r')) {
+            return res.sendStatus(401);
+        }
+
         res.status(200).json({
             token,
         });
