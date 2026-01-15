@@ -1,6 +1,8 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import createToken from './sessionToken.js';
 
+const SECRET = 'abcdefg';
 const PORT = 3001;
 const HOST = 'localhost';
 
@@ -92,6 +94,26 @@ const app = express()
         }
 
         response.status(200).json(userFound);
+    })
+    .post('/v2/login', async (req, res, next) => {
+        const token = jwt.sign(
+            {
+                username: 'user',
+                userId: 1,
+                scope: [
+                    "payments:rw", "invoices:r"
+                ]
+            },
+            SECRET,
+            {
+                algorithm: 'HS256',
+                expiresIn: Math.floor(Date.now() / 1000) + 86400,
+            }
+        );
+
+        res.status(200).json({
+            token,
+        });
     });
 
 app.listen(PORT, HOST, () => {
